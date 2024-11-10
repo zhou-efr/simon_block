@@ -3,7 +3,14 @@
 // Game variables
 const int starting_sequence_length = 1;
 int sequence_length = starting_sequence_length, *sequence = NULL, *sequence_user = NULL;
-// Serial communication variables
+const int gamemode = 1; // 1 = Serial, 2 = Buttons
+
+// Hardware variables
+const int button_pins[4] = {2, 3, 4, 5};
+const int button_states[4] = {LOW, LOW, LOW, LOW};
+const int previous_button_states[4] = {LOW, LOW, LOW, LOW};
+const int led_pins[4] = {6, 7, 8, 9};
+const int buzzer_pin = 10;
 
 // Function prototypes
 void logArray(int *array, int length);
@@ -12,11 +19,27 @@ char recvWithEndMarker();
 void showNewNumber();
 int getUserInput();
 void endTurn();
+int getButtonUserInput();
+int getSerialUserInput();
+void showInput(int input);
 
 // Setup and loop
 void setup() {
   Serial.begin(9600);
   Serial.println("Starting up...");	
+
+  if (gamemode == 1){
+    Serial.println("Gamemode: Serial");
+  }
+  else if (gamemode == 2){
+    Serial.println("Gamemode: Buttons");
+    for (int i = 0; i < 4; i++){
+      pinMode(button_pins[i], INPUT);
+      pinMode(led_pins[i], OUTPUT);
+    }
+    pinMode(buzzer_pin, OUTPUT);
+  }
+
   Serial.println("");
   Serial.println("      ___                       ___           ___           ___     ");
   Serial.println("     /\\__\\                     /\\  \\         /\\  \\         /\\  \\    ");
@@ -53,6 +76,7 @@ void logArray(int *array, int length){
   for (int i = 0; i < length; i++){
     Serial.print(array[i]);
     Serial.print(" ");
+    if (gamemode == 2) showInput(array[i]);
   }
   Serial.println("");
 }
@@ -86,6 +110,30 @@ void updateSequence(){
   free(temp_sequence);
 }
 int getUserInput(){
+  if (gamemode == 1){
+    return getSerialUserInput();
+  }
+  else if (gamemode == 2){
+    return getButtonUserInput();
+  }
+  return -1;
+}
+int getButtonUserInput(){
+  bool button_pressed = false;
+
+  while(!button_pressed){
+    for (int i = 0; i < 4; i++){
+      if (digitalRead(button_pins[i]) == HIGH){
+        button_pressed = true;
+        showInput(i);
+        return i;
+      }
+    }
+  }
+
+  return -1;
+}
+int getSerialUserInput(){
   const byte numChars = 4;
   char receivedChars[numChars];
   boolean newData = false;
@@ -169,5 +217,18 @@ void endTurn(){
     int *temp_sequence = sequence_user;
     sequence_user = NULL;
     free(temp_sequence);
+  }
+}
+void showInput(int input){
+  for (int i = 0; i < 4; i++){
+    if (i == input){
+      digitalWrite(led_pins[i], HIGH);
+      tone(buzzer_pin, i*1000);
+      delay(300);
+      noTone(buzzer_pin);
+    }
+    else{
+      digitalWrite(led_pins[i], LOW);
+    }
   }
 }
