@@ -4,15 +4,11 @@
 const int starting_sequence_length = 1;
 int sequence_length = starting_sequence_length, *sequence = NULL, *sequence_user = NULL;
 // Serial communication variables
-const byte numChars = 32;
-char receivedChars[numChars];
-boolean newData = false;
-int dataNumber = 0;   
 
 // Function prototypes
 void logArray(int *array, int length);
 void updateSequence();
-void recvWithEndMarker();
+char recvWithEndMarker();
 void showNewNumber();
 int getUserInput();
 void endTurn();
@@ -39,9 +35,13 @@ void setup() {
 void loop() {
   updateSequence();
   logArray(sequence, sequence_length);
-  logArray(sequence_user, sequence_length);
 
-  sequence_user[sequence_length-1] = getUserInput();
+  for (int i = 0; i < sequence_length; i++){
+    Serial.print("Enter the number at position ");
+    Serial.print(i);
+    Serial.print(" in the sequence: ");
+    sequence_user[i] = getUserInput();
+  }
   logArray(sequence_user, sequence_length);
 
   endTurn();
@@ -71,29 +71,42 @@ void updateSequence(){
   sequence_length++;
 
   int *temp_sequence = sequence;
-  int *temp_sequence_user = sequence_user;
 
   sequence = (int*) malloc(sequence_length * sizeof(int));
   sequence_user = (int*) malloc(sequence_length * sizeof(int));
 
   for (int i = 0; i < sequence_length-1; i++){
     sequence[i] = temp_sequence[i];
-    sequence_user[i] = temp_sequence_user[i];
+    sequence_user[i] = -1;
   }
 
   sequence[sequence_length-1] = random(4);
   sequence_user[sequence_length-1] = -1;
   
   free(temp_sequence);
-  free(temp_sequence_user);
 }
 int getUserInput(){
-  while(!newData){
-    recvWithEndMarker();
-  }
-  showNewNumber();
+  const byte numChars = 4;
+  char receivedChars[numChars];
+  boolean newData = false;
+  int char_count = 0;
 
-  int input = dataNumber-1;
+  while(!newData){
+    char temp_char = recvWithEndMarker();
+
+    if (temp_char != '\0'){
+      receivedChars[char_count] = temp_char;
+      char_count++;
+    }
+    if (char_count > numChars){
+      char_count--;
+    }
+    if (temp_char == '\0'){
+      newData = true;
+    }
+  }
+
+  int input = atoi(receivedChars)-1;
 
   if (input < 0 || input > 3){
     Serial.println("Invalid input. Please enter a number between 1 and 4.");
@@ -101,45 +114,31 @@ int getUserInput(){
   }
   return input;
 }
-void recvWithEndMarker() {
-    // Serial.println("User input: ");
-    static byte ndx = 0;
-    char endMarker = '\n';
-    char rc;
-    while (Serial.available() == 0);
-    // Serial.print("Serial.available() = ");
-    // Serial.println(Serial.available());
-    if (Serial.available() > 0) {
-        rc = Serial.read();
-        // Serial.print("rc = ");
-        // Serial.println(rc);
-        if (rc != endMarker) {
-            receivedChars[ndx] = rc;
-            ndx++;
-            if (ndx >= numChars) {
-                ndx = numChars - 1;
-            }
-        }
-        else {
-            receivedChars[ndx] = '\0'; // terminate the string
-            ndx = 0;
-            newData = true;
-        }
+char recvWithEndMarker() {
+  char endMarker = '\n';
+  char rc;
+  while (Serial.available() == 0);
+  if (Serial.available() > 0) {
+    rc = Serial.read();
+    if (rc != endMarker) {
+      return rc;
     }
-}
-void showNewNumber() {
-    if (newData == true) {
-        dataNumber = 0;             // new for this version
-        dataNumber = atoi(receivedChars);   // new for this version
-        Serial.print("This just in ... ");
-        Serial.println(receivedChars);
-        Serial.print("Data as Number ... ");    // new for this version
-        Serial.println(dataNumber);     // new for this version
-        newData = false;
+    else {
+      return '\0';  
     }
+  }
+  return '\0';
 }
 void endTurn(){
-  if (sequence[sequence_length-1] != sequence_user[sequence_length-1]){
+  bool correct = true;
+
+  for (int i = 0; i < sequence_length; i++){
+    if (sequence[i] != sequence_user[i]){
+      correct = false;
+    }
+  }
+
+  if (!correct){
     Serial.println("You lose!");
     Serial.print("The correct sequence was: ");
     logArray(sequence, sequence_length);
@@ -167,5 +166,8 @@ void endTurn(){
   // }
   else{
     Serial.println("Correct! Next round.");
+    int *temp_sequence = sequence_user;
+    sequence_user = NULL;
+    free(temp_sequence);
   }
 }
