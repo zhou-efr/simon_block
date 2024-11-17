@@ -3,14 +3,14 @@
 // Game variables
 const int starting_sequence_length = 1;
 int sequence_length = starting_sequence_length, *sequence = NULL, *sequence_user = NULL;
-const int gamemode = 1; // 1 = Serial, 2 = Buttons
+const int gamemode = 2; // 1 = Serial, 2 = Buttons
 
 // Hardware variables
-const int button_pins[4] = {2, 3, 4, 5};
+const int button_pins[4] = {5, 4, 0, 2};
 const int button_states[4] = {LOW, LOW, LOW, LOW};
 const int previous_button_states[4] = {LOW, LOW, LOW, LOW};
-const int led_pins[4] = {6, 7, 8, 9};
-const int buzzer_pin = 10;
+const int led_pins[4] = {16, 14, 12, 13};
+const int buzzer_pin = 15;
 
 // Function prototypes
 void logArray(int *array, int length);
@@ -27,7 +27,7 @@ void showInput(int input);
 void setup() {
   Serial.begin(9600);
   Serial.println("Starting up...");	
-
+  return;
   if (gamemode == 1){
     Serial.println("Gamemode: Serial");
   }
@@ -56,6 +56,7 @@ void setup() {
 }
 
 void loop() {
+  return;
   updateSequence();
   logArray(sequence, sequence_length);
 
